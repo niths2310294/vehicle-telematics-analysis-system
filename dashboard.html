@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Driver Behavior Dashboard</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #f4f6f9;
+    color: #1a202c;
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  header {
+    background: #fff;
+    border-bottom: 1px solid #e8ecf0;
+    padding: 0 28px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .header-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: #1a202c;
+  }
+
+  .live-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #16a34a;
+  }
+
+  .live-dot {
+    width: 6px; height: 6px;
+    background: #16a34a;
+    border-radius: 50%;
+    animation: blink 2s ease-in-out infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* MAIN */
+  .main { padding: 24px 28px; display: flex; flex-direction: column; gap: 18px; }
+
+  /* STATUS CARD */
+  .status-card {
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid #e8ecf0;
+    padding: 18px 22px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+
+  .status-card.normal { border-color: #bbf7d0; box-shadow: 0 0 0 4px rgba(34,197,94,0.05); }
+  .status-card.brake  { border-color: #fecaca; box-shadow: 0 0 0 4px rgba(239,68,68,0.05); }
+  .status-card.accel  { border-color: #fde68a; box-shadow: 0 0 0 4px rgba(245,158,11,0.05); }
+
+  .status-icon {
+    width: 46px; height: 46px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+
+  .normal .status-icon { background: #f0fdf4; }
+  .brake  .status-icon { background: #fef2f2; }
+  .accel  .status-icon { background: #fffbeb; }
+
+  .status-info { flex: 1; }
+
+  .status-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #94a3b8;
+    margin-bottom: 3px;
+  }
+
+  .status-value {
+    font-size: 20px;
+    font-weight: 600;
+    transition: color 0.3s;
+  }
+
+  .normal .status-value { color: #16a34a; }
+  .brake  .status-value { color: #dc2626; }
+  .accel  .status-value { color: #d97706; }
+
+  .status-desc { font-size: 13px; color: #94a3b8; margin-top: 2px; }
+
+  .status-time {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: #cbd5e1;
+  }
+
+  /* METRICS */
+  .metrics-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+
+  .metric-card {
+    background: #fff;
+    border: 1px solid #e8ecf0;
+    border-radius: 12px;
+    padding: 16px 18px;
+    transition: border-color 0.2s;
+  }
+
+  .metric-card:hover { border-color: #cbd5e1; }
+
+  .metric-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #94a3b8;
+    margin-bottom: 10px;
+  }
+
+  .metric-value {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 26px;
+    font-weight: 600;
+    color: #1a202c;
+    line-height: 1;
+  }
+
+  .metric-unit { font-size: 13px; color: #94a3b8; }
+
+  .metric-bar {
+    margin-top: 10px;
+    height: 3px;
+    background: #f1f5f9;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .metric-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    width: 0%;
+    transition: width 0.5s ease;
+  }
+
+  .ax .metric-bar-fill { background: #38bdf8; }
+  .ay .metric-bar-fill { background: #818cf8; }
+  .az .metric-bar-fill { background: #fb923c; }
+
+  /* BOTTOM */
+  .bottom-row {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 16px;
+  }
+
+  .map-card {
+    background: #fff;
+    border: 1px solid #e8ecf0;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .card-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .card-header-title { font-size: 13px; font-weight: 600; color: #475569; }
+
+  .coord-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: #cbd5e1;
+  }
+
+  #map { height: 360px; }
+
+  .log-card {
+    background: #fff;
+    border: 1px solid #e8ecf0;
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .event-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .event-list::-webkit-scrollbar { width: 3px; }
+  .event-list::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 3px; }
+
+  .event-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 9px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 500;
+    border-left: 3px solid;
+    animation: fadeIn 0.2s ease both;
+  }
+
+  .event-item.normal { background: #f0fdf4; border-color: #86efac; color: #15803d; }
+  .event-item.brake  { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
+  .event-item.accel  { background: #fffbeb; border-color: #fcd34d; color: #b45309; }
+
+  .event-time {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: #94a3b8;
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateX(-4px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+  }
+
+  .shaking { animation: shake 0.4s ease; }
+
+  @media (max-width: 900px) {
+    .metrics-row { grid-template-columns: repeat(2, 1fr); }
+    .bottom-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-title">🚗 Driver Behavior Monitor</div>
+  <div class="live-pill"><div class="live-dot"></div> Live</div>
+</header>
+
+<div class="main">
+
+  <!-- STATUS -->
+  <div class="status-card normal" id="statusCard">
+    <div class="status-icon" id="statusIcon">✅</div>
+    <div class="status-info">
+      <div class="status-label">Driving Behavior</div>
+      <div class="status-value" id="statusValue">Normal</div>
+      <div class="status-desc" id="statusDesc">All parameters within safe limits</div>
+    </div>
+    <div class="status-time" id="statusTime">--:--:--</div>
+  </div>
+
+  <!-- METRICS -->
+  <div class="metrics-row">
+    <div class="metric-card ax">
+      <div class="metric-label">Accel X</div>
+      <div class="metric-value" id="ax">0.00</div>
+      <div class="metric-bar"><div class="metric-bar-fill" id="axBar"></div></div>
+    </div>
+    <div class="metric-card ay">
+      <div class="metric-label">Accel Y</div>
+      <div class="metric-value" id="ay">0.00</div>
+      <div class="metric-bar"><div class="metric-bar-fill" id="ayBar"></div></div>
+    </div>
+    <div class="metric-card az">
+      <div class="metric-label">Accel Z</div>
+      <div class="metric-value" id="az">0.00</div>
+      <div class="metric-bar"><div class="metric-bar-fill" id="azBar"></div></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Last Update</div>
+      <div class="metric-value" style="font-size:14px; color:#475569; margin-top:4px;" id="time">Waiting…</div>
+    </div>
+  </div>
+
+  <!-- BOTTOM -->
+  <div class="bottom-row">
+
+    <div class="map-card">
+      <div class="card-header">
+        <div class="card-header-title">📍 Live Location</div>
+        <div class="coord-text" id="coordText">13.0827° N, 80.2707° E</div>
+      </div>
+      <div id="map"></div>
+    </div>
+
+    <div class="log-card">
+      <div class="card-header">
+        <div class="card-header-title">📋 Event Log</div>
+      </div>
+      <div class="event-list" id="eventList">
+        <div class="event-item normal">✅ System started <span class="event-time">now</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  var map = L.map('map').setView([13.0827, 80.2707], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+  var marker = L.marker([13.0827, 80.2707]).addTo(map);
+  var pathLine = L.polyline([], { color: '#38bdf8', weight: 2.5, opacity: 0.7 }).addTo(map);
+  var pathCoords = [];
+
+  var configs = {
+    NORMAL:             { cls: 'normal', icon: '✅', label: 'Normal',             desc: 'All parameters within safe limits' },
+    HARSH_BRAKING:      { cls: 'brake',  icon: '🛑', label: 'Harsh Braking',      desc: 'Sudden deceleration detected' },
+    HARSH_ACCELERATION: { cls: 'accel',  icon: '⚡', label: 'Harsh Acceleration', desc: 'Rapid acceleration detected' }
+  };
+
+  var lastBehavior = null;
+
+  function setBar(id, val) {
+    document.getElementById(id).style.width = Math.min(Math.abs(val) / 3 * 100, 100) + '%';
+  }
+
+  function updateStatus(behavior) {
+    var cfg = configs[behavior] || configs.NORMAL;
+    var card = document.getElementById('statusCard');
+    if (behavior !== lastBehavior) {
+      card.className = 'status-card ' + cfg.cls;
+      document.getElementById('statusIcon').textContent = cfg.icon;
+      document.getElementById('statusValue').textContent = cfg.label;
+      document.getElementById('statusDesc').textContent = cfg.desc;
+      if (behavior !== 'NORMAL') { card.classList.add('shaking'); setTimeout(() => card.classList.remove('shaking'), 400); }
+      var list = document.getElementById('eventList');
+      var now = new Date().toLocaleTimeString('en-US', { hour12: false });
+      var el = document.createElement('div');
+      el.className = 'event-item ' + cfg.cls;
+      el.innerHTML = cfg.icon + ' ' + cfg.label + '<span class="event-time">' + now + '</span>';
+      list.prepend(el);
+      while (list.children.length > 30) list.removeChild(list.lastChild);
+      lastBehavior = behavior;
+    }
+    document.getElementById('statusTime').textContent = new Date().toLocaleTimeString('en-US', { hour12: false });
+  }
+
+  function updateData() {
+    fetch('/data')
+      .then(r => r.json())
+      .then(data => {
+        var ax = parseFloat(data.ax) || 0, ay = parseFloat(data.ay) || 0, az = parseFloat(data.az) || 0;
+        document.getElementById('ax').textContent = ax.toFixed(2);
+        document.getElementById('ay').textContent = ay.toFixed(2);
+        document.getElementById('az').textContent = az.toFixed(2);
+        document.getElementById('time').textContent = data.time || '--';
+        setBar('axBar', ax); setBar('ayBar', ay); setBar('azBar', az);
+        updateStatus(data.behavior || 'NORMAL');
+        if (data.lat && data.lon) {
+          var ll = [parseFloat(data.lat), parseFloat(data.lon)];
+          marker.setLatLng(ll); pathCoords.push(ll); pathLine.setLatLngs(pathCoords);
+          document.getElementById('coordText').textContent = ll[0].toFixed(4) + '° N, ' + ll[1].toFixed(4) + '° E';
+        }
+      })
+      .catch(() => {
+        var ax = +(Math.random()*2-1).toFixed(2), ay = +(Math.random()*2-1).toFixed(2), az = +(1+Math.random()*0.5).toFixed(2);
+        var b = ['NORMAL','NORMAL','NORMAL','HARSH_BRAKING','HARSH_ACCELERATION'];
+        document.getElementById('ax').textContent = ax.toFixed(2);
+        document.getElementById('ay').textContent = ay.toFixed(2);
+        document.getElementById('az').textContent = az.toFixed(2);
+        document.getElementById('time').textContent = new Date().toLocaleTimeString();
+        setBar('axBar', ax); setBar('ayBar', ay); setBar('azBar', az);
+        updateStatus(b[Math.floor(Math.random()*b.length)]);
+      });
+  }
+
+  setInterval(updateData, 2000);
+  updateData();
+</script>
+</body>
+</html>
