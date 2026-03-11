@@ -7,7 +7,7 @@ import time
 
 app = FastAPI()
 
-model = joblib.load("driver_behavior_model_with_speed.pkl")
+model = joblib.load("driver_behavior_model_without_speed.pkl")
 
 class SensorData(BaseModel):
     ax: float
@@ -16,6 +16,7 @@ class SensorData(BaseModel):
     speed: float
     lat: float
     lon: float
+
 
 latest_data = {
     "lat": 13.0827,
@@ -27,6 +28,7 @@ latest_data = {
     "behavior": "NORMAL",
     "time": ""
 }
+
 
 @app.post("/predict")
 def predict(data: SensorData):
@@ -40,7 +42,8 @@ def predict(data: SensorData):
 
     acc_mag = (ax**2 + ay**2 + az**2) ** 0.5
 
-    X = np.array([[ax, ay, az, acc_mag, speed]])
+    # MODEL INPUT (WITHOUT SPEED)
+    X = np.array([[ax, ay, az, acc_mag]])
 
     prediction = model.predict(X)[0]
 
