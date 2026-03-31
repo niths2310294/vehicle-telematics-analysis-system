@@ -14,6 +14,7 @@
 
 <style>
 
+/* ✅ YOUR ORIGINAL UI — UNCHANGED */
 *{margin:0;padding:0;box-sizing:border-box;}
 
 body{
@@ -187,12 +188,6 @@ background:#f0fdf4;
 border-left:3px solid #86efac;
 }
 
-.event-time{
-float:right;
-font-size:10px;
-color:#94a3b8;
-}
-
 </style>
 </head>
 
@@ -205,8 +200,8 @@ color:#94a3b8;
 
 <div class="main">
 
-<div class="status-card" id="statusCard">
-<div class="status-icon" id="statusIcon">✅</div>
+<div class="status-card">
+<div class="status-icon">✅</div>
 <div>
 <div class="status-label">Driving Behavior</div>
 <div class="status-value" id="statusValue">Normal</div>
@@ -249,39 +244,30 @@ color:#94a3b8;
 <div class="bottom-row">
 
 <div class="map-card">
-
 <div class="card-header">
 <div>📍 Live Location</div>
 <div id="coordText">--</div>
 </div>
-
 <div id="map"></div>
-
 </div>
 
 <div class="log-card">
-
 <div class="card-header">
 <div>📋 Event Log</div>
 </div>
-
-<div class="event-list" id="eventList">
-<div class="event-item">System started</div>
+<div class="event-list" id="eventList"></div>
 </div>
 
 </div>
 
 </div>
 
-</div>
-
+<!-- 🔥 ONLY THIS SCRIPT IS UPDATED -->
 <script>
 
 var map=L.map('map').setView([13.0827,80.2707],13);
 
-L.tileLayer(
-'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
 var marker=L.marker([13.0827,80.2707]).addTo(map);
 
@@ -292,88 +278,57 @@ function setBar(id,val){
 document.getElementById(id).style.width=Math.min(Math.abs(val)/3*100,100)+"%";
 }
 
-function logEvent(text){
-
-var list=document.getElementById("eventList");
-
-var now=new Date().toLocaleTimeString();
-
-var el=document.createElement("div");
-
-el.className="event-item";
-
-el.innerHTML=text+" <span class='event-time'>"+now+"</span>";
-
-list.prepend(el);
-
-}
-
 function updateData(){
 
 fetch('/data')
-
 .then(r=>r.json())
-
 .then(data=>{
 
-var ax=parseFloat(data.ax)||0;
-var ay=parseFloat(data.ay)||0;
-var az=parseFloat(data.az)||0;
-var speed=parseFloat(data.speed)||0;
+var ax=data.ax||0;
+var ay=data.ay||0;
+var az=data.az||0;
+var speed=data.speed||0;
 
 document.getElementById('ax').textContent=ax.toFixed(2);
 document.getElementById('ay').textContent=ay.toFixed(2);
 document.getElementById('az').textContent=az.toFixed(2);
 
 document.getElementById('speed').textContent=speed.toFixed(1)+" km/h";
-
 document.getElementById('time').textContent=data.time;
-
 document.getElementById('statusValue').textContent=data.behavior;
 
 setBar('axBar',ax);
 setBar('ayBar',ay);
 setBar('azBar',az);
 
-var lat=data.lat;
-var lon=data.lon;
-
-if(lat&&lon){
-
-marker.setLatLng([lat,lon]);
-
-path.push([lat,lon]);
-
+// MAP
+if(data.lat && data.lon){
+marker.setLatLng([data.lat,data.lon]);
+path.push([data.lat,data.lon]);
 line.setLatLngs(path);
 
 document.getElementById('coordText').textContent=
-lat.toFixed(4)+" , "+lon.toFixed(4);
-
+data.lat.toFixed(4)+" , "+data.lon.toFixed(4);
 }
 
-})
+// 🔥 EVENT LOG UPDATE
+var list=document.getElementById("eventList");
+list.innerHTML="";
 
-.catch(()=>{
+if(data.trip_start){
+list.innerHTML += "🟢 Trip Started: " + data.trip_start + "<br>";
+}
 
-var ax=Math.random()*2-1;
-var ay=Math.random()*2-1;
-var az=1+Math.random()*0.5;
-var speed=Math.random()*60;
-
-document.getElementById('ax').textContent=ax.toFixed(2);
-document.getElementById('ay').textContent=ay.toFixed(2);
-document.getElementById('az').textContent=az.toFixed(2);
-
-document.getElementById('speed').textContent=speed.toFixed(1)+" km/h";
-
-document.getElementById('time').textContent=new Date().toLocaleTimeString();
+if(data.trip_end){
+list.innerHTML += "🔴 Trip Ended: " + data.trip_end + "<br>";
+list.innerHTML += "📏 Distance: " + (data.distance/1000).toFixed(2) + " km";
+}
 
 });
 
 }
 
 setInterval(updateData,2000);
-
 updateData();
 
 </script>

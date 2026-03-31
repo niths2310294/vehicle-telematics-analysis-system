@@ -4,3 +4,5 @@ scikit-learn
 pandas
 numpy
 geopy
+psycopg2-binary
+sqlalchemy
