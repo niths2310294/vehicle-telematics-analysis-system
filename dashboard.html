@@ -312,23 +312,40 @@ data.lat.toFixed(4)+" , "+data.lon.toFixed(4);
 }
 
 // 🔥 EVENT LOG UPDATE
-var list=document.getElementById("eventList");
-list.innerHTML="";
 
-if(data.trip_start){
-list.innerHTML += "🟢 Trip Started: " + data.trip_start + "<br>";
+var list = document.getElementById("eventList");
+
+// CLEAR
+list.innerHTML = "";
+
+// TRIP START
+if (data.trip_start) {
+    list.innerHTML += `
+    <div class="event-item">
+        🟢 Trip Started
+        <span class="event-time">${data.trip_start}</span>
+    </div>`;
 }
 
-if(data.trip_end){
-list.innerHTML += "🔴 Trip Ended: " + data.trip_end + "<br>";
-list.innerHTML += "📏 Distance: " + (data.distance/1000).toFixed(2) + " km";
-}
+// TRIP END
+if (data.trip_end) {
+    list.innerHTML += `
+    <div class="event-item">
+        🔴 Trip Ended
+        <span class="event-time">${data.trip_end}</span>
+    </div>`;
 
+    list.innerHTML += `
+    <div class="event-item">
+        📏 Distance Travelled
+        <span class="event-time">${(data.distance/1000).toFixed(2)} km</span>
+    </div>`;
+}
 });
 
 }
 
-setInterval(updateData,2000);
+setInterval(updateData,var list=document.getElementById("eventList");2000);
 updateData();
 
 </script>
