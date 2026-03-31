@@ -140,22 +140,29 @@ def predict(data: SensorData):
 
 
 # ---------------- AUTO STOP ----------------
+print("THREAD RUNNING")
 def monitor_inactivity():
     global trip_active, last_received_time, total_distance, start_time
 
+    print("THREAD STARTED")
+
     while True:
         if trip_active and last_received_time is not None:
-            if time.time() - last_received_time > INACTIVITY_TIMEOUT:
+
+            time_diff = time.time() - last_received_time
+            print("TIME DIFF:", time_diff)
+
+            if time_diff > INACTIVITY_TIMEOUT:
 
                 print("Trip Ended")
 
                 db = SessionLocal()
-
                 end_time = time.strftime("%H:%M:%S")
 
-                # SAVE FINAL DISTANCE BEFORE RESET
+                # UPDATE LIVE DATA
                 latest_data["distance"] = total_distance
                 latest_data["trip_end"] = end_time
+                latest_data["trip_active"] = False
 
                 trip = Trip(
                     start_time=start_time,
@@ -163,8 +170,14 @@ def monitor_inactivity():
                     distance=total_distance
                 )
 
-                db.add(trip)
-                db.commit()
+                try:
+                    db.add(trip)
+                    db.commit()
+                    print("DB SAVED SUCCESS")
+                except Exception as e:
+                    print("DB ERROR:", e)
+
+                print("TRIP SAVED:", start_time, end_time, total_distance)
 
                 # RESET
                 trip_active = False
@@ -174,7 +187,10 @@ def monitor_inactivity():
         time.sleep(2)
 
 
-threading.Thread(target=monitor_inactivity, daemon=True).start()
+@app.on_event("startup")
+def start_background_task():
+    import threading
+    threading.Thread(target=monitor_inactivity, daemon=True).start()
 
 
 # ---------------- API ----------------
